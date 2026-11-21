@@ -63,7 +63,7 @@ button:disabled { opacity: .5; cursor: default; }
 .post.checking .text, .post.veiled:not(.revealed) .text { filter: blur(7px); user-select: none; }
 .veil { background: var(--bg); border: 1px dashed var(--accent); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
 .veil-reason { margin: 0; font-size: 13px; }
-.post.revealed .veil { display: none; }
+.veil[hidden], .post.revealed .veil { display: none; }
 .badge { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .badge[data-source=on_device] { color: var(--device); }
 .badge[data-source=in_cloud] { color: var(--cloud); }

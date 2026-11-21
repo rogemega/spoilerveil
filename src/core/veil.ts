@@ -91,6 +91,18 @@ export async function prepareOnDevice(onProgress?: (p: number) => void): Promise
   await judgeModel('hybrid').initializeDeviceModel(onProgress);
 }
 
+/**
+ * Loads Gemini Nano into memory ahead of time (the first prompt otherwise pays ~30 s on a CPU-only
+ * machine). Cheap to call repeatedly; does nothing useful if Nano is not available.
+ */
+export async function warmUpOnDevice(points = 16): Promise<void> {
+  try {
+    await judgeModel('hybrid', points).generateContent('Reply with {"reveals": 0}.');
+  } catch {
+    /* warm-up is best effort */
+  }
+}
+
 /** Reports what Chrome says about Gemini Nano in this context. */
 export async function onDeviceAvailability(): Promise<string> {
   const LM = (globalThis as unknown as { LanguageModel?: { availability: (o?: object) => Promise<string> } }).LanguageModel;

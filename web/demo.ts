@@ -1,4 +1,4 @@
-import { CLOUD_MODEL, buildProfile, judgePost, onDeviceAvailability, prepareOnDevice, type JudgeMode, type ShowProfile } from '../src/core/veil';
+import { CLOUD_MODEL, buildProfile, judgePost, onDeviceAvailability, prepareOnDevice, warmUpOnDevice, type JudgeMode, type ShowProfile } from '../src/core/veil';
 import { DEMO_GUIDE, DEMO_POSTS, DEMO_TITLE, type DemoPost } from './fixture';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -62,7 +62,12 @@ buildBtn.addEventListener('click', async () => {
   setStatus('profileStatus', 'Asking Gemini in the cloud to build your spoiler profile…', 'busy');
   const t0 = performance.now();
   try {
-    profile = await buildProfile(titleEl.value.trim(), `Episode ${ep} (inclusive)`, guideEl.value);
+    // Cloud builds the profile while Gemini Nano loads into memory on the device, in parallel.
+    const [built] = await Promise.all([
+      buildProfile(titleEl.value.trim(), `Episode ${ep} (inclusive)`, guideEl.value),
+      (await onDeviceAvailability()) === 'available' ? warmUpOnDevice() : Promise.resolve(),
+    ]);
+    profile = built;
     const s = ((performance.now() - t0) / 1000).toFixed(1);
     setStatus('profileStatus',
       `Profile ready in ${s}s (cloud, once): ${profile.terms.length} names to watch for, ${profile.hiddenPlot.length} hidden plot points kept from you. From now on, posts are judged locally.`, 'ok');
