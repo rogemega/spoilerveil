@@ -1,4 +1,4 @@
-import { buildProfile, judgePost, onDeviceAvailability, prepareOnDevice, type JudgeMode, type ShowProfile } from '../src/core/veil';
+import { CLOUD_MODEL, buildProfile, judgePost, onDeviceAvailability, prepareOnDevice, type JudgeMode, type ShowProfile } from '../src/core/veil';
 import { DEMO_GUIDE, DEMO_POSTS, DEMO_TITLE, type DemoPost } from './fixture';
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -116,7 +116,7 @@ playBtn.addEventListener('click', async () => {
       if (j.source !== 'skipped') {
         stats.judged++;
         stats.latency += j.ms;
-        if (j.source === 'on_device') stats.device++; else stats.cloud++;
+        if (j.source === 'in_cloud') stats.cloud++; else stats.device++;
         const truth = p.reveals > seen;
         stats.scored++;
         if ((j.verdict === 'spoiler') === truth) stats.correct++;
@@ -128,7 +128,7 @@ playBtn.addEventListener('click', async () => {
         li.querySelector('.veil')!.removeAttribute('hidden');
         li.querySelector('.veil-reason')!.textContent = `Spoiler for ${profile.title}: ${j.reason}`;
       }
-      const where = j.source === 'on_device' ? 'on-device' : j.source === 'in_cloud' ? 'cloud' : 'skipped (not about your show)';
+      const where = { on_device: 'on-device', in_cloud: 'cloud', name_match: 'on-device name match', skipped: 'skipped (not about your show)' }[j.source];
       badge.textContent = j.source === 'skipped' ? where : `${j.verdict} · ${where} · ${Math.round(j.ms)} ms`;
       badge.setAttribute('data-source', j.source);
     } catch (e) {
@@ -144,3 +144,8 @@ playBtn.addEventListener('click', async () => {
 
 refreshNano();
 renderStats();
+
+// Local debugging hook (dev server only): inspect a profile from the console.
+if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+  (window as unknown as { __sv: unknown }).__sv = { buildProfile, CLOUD_MODEL };
+}

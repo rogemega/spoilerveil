@@ -32,6 +32,8 @@ npx http-server dist/web -p 5173      # web demo
 # Chrome → chrome://extensions → Developer mode → Load unpacked → dist/extension
 ```
 
+For very recent story arcs the cloud model may not know every name yet; paste a synopsis or episode guide into the optional field when adding a show and it becomes the source of truth.
+
 Gemini Nano needs a supported Chrome and device (see Chrome's built-in AI hardware requirements). Without it, everything still works through the cloud fallback.
 
 ## License

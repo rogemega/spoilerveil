@@ -8,14 +8,21 @@
 //    falls back to the cloud automatically (Firebase AI Logic hybrid inference).
 import { InferenceMode, getGenerativeModel, type GenerativeModel } from 'firebase/ai';
 import { getFirebase } from './firebase';
-import { matchShow, type ShowProfile } from './match';
+import { laterNameIn, matchShow, type ShowProfile } from './match';
 
 export type { ShowProfile } from './match';
 
+/** Fast, cheap model for per-post fallback judgements. */
 export const CLOUD_MODEL = 'gemini-3.5-flash-lite';
+/**
+ * Model for the once-per-show profile. A larger model would know more recent story arcs, but in
+ * testing (2026-11) gemini-3.8-flash took over a minute for this prompt, so the fast model is used and
+ * users can paste an episode guide / synopsis for very recent arcs.
+ */
+export const PROFILE_MODEL = CLOUD_MODEL;
 
 export type Verdict = 'spoiler' | 'safe';
-export type Source = 'on_device' | 'in_cloud' | 'skipped';
+export type Source = 'on_device' | 'in_cloud' | 'name_match' | 'skipped';
 
 export interface Judgement {
   verdict: Verdict;
@@ -43,10 +50,11 @@ const PROFILE_SCHEMA = {
   properties: {
     title: { type: 'string' },
     terms: { type: 'array', items: { type: 'string' }, maxItems: 80 },
+    laterNames: { type: 'array', items: { type: 'string' }, maxItems: 40 },
     knownFacts: { type: 'array', items: { type: 'string' }, maxItems: 10 },
     hiddenPlot: { type: 'array', items: { type: 'string' }, maxItems: 16 },
   },
-  required: ['title', 'terms', 'knownFacts', 'hiddenPlot'],
+  required: ['title', 'terms', 'laterNames', 'knownFacts', 'hiddenPlot'],
 };
 
 export type JudgeMode = 'hybrid' | 'cloud';
@@ -128,6 +136,10 @@ export async function judgePost(post: string, shows: ShowProfile[], opts: JudgeO
   if (!show || !show.hiddenPlot.length) {
     return { verdict: 'safe', reason: 'Not about a show you follow', source: 'skipped', ms: performance.now() - t0 };
   }
+  // A name the viewer has not met yet is a spoiler by itself: veil instantly, no model call.
+  if (laterNameIn(post, show)) {
+    return { verdict: 'spoiler', reason: `names someone you have not met by ${show.progress}`, source: 'name_match', ms: performance.now() - t0, showId: show.id };
+  }
   const res = await judgeModel(opts.mode, show.hiddenPlot.length).generateContent(judgePrompt(show, post, opts.pageTitle));
   const { reveals } = parseJson<{ reveals: number }>(res.response.text());
   const source: Source = res.response.inferenceSource === 'on_device' ? 'on_device' : 'in_cloud';
@@ -145,29 +157,38 @@ export async function judgePost(post: string, shows: ShowProfile[], opts: JudgeO
  * Cloud step, once per show. With an episode guide (or a fictional show), the guide is the source
  * of truth; otherwise Gemini relies on what it knows about the title.
  */
-export async function buildProfile(title: string, progress: string, guide = ''): Promise<ShowProfile> {
+export async function buildProfile(title: string, progress: string, guide = '', modelName = PROFILE_MODEL): Promise<ShowProfile> {
   const { ai } = getFirebase();
   const model = getGenerativeModel(ai, {
     mode: InferenceMode.ONLY_IN_CLOUD,
     inCloudParams: {
-      model: CLOUD_MODEL,
-      generationConfig: { responseMimeType: 'application/json', responseJsonSchema: PROFILE_SCHEMA, temperature: 0.2 },
+      model: modelName,
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseJsonSchema: PROFILE_SCHEMA,
+        temperature: 0.2,
+        maxOutputTokens: 4096,
+      },
     },
   });
   const prompt = [
     `Build a spoiler-filter profile for the show/book/game "${title}". The viewer has seen up to: ${progress}.`,
     guide ? `Use this episode guide as the source of truth:\n"""${guide.slice(0, 20000)}"""` : `Use what you know about this title. If you do not know it, keep hiddenPlot generic (deaths, betrayals, finale outcome).`,
     `terms: names of characters (including ones who only appear AFTER the viewer's progress — later villains and reveals are strong spoiler signals), places, groups, ships, nicknames and the title. Used for keyword matching, so include short forms, first names alone, and Japanese names/katakana transliterations of every name and of the title (e.g. "Mara" → "マーラ").`,
+    `laterNames: names of characters, forms, groups, places or items that are first introduced AFTER the viewer's progress, so that merely mentioning them is a spoiler (English, Japanese and katakana forms, short forms too). Never include anyone or anything the viewer has already met. Empty if unsure.`,
     `knownFacts: up to 10 short facts the viewer already saw.`,
     `hiddenPlot: up to 16 short, concrete plot points that happen AFTER the viewer's progress (who dies, who is the traitor, who wins, how it ends). These are only read by a local filter model, never shown to the viewer.`,
   ].join('\n\n');
   const res = await model.generateContent(prompt);
-  const p = parseJson<{ title: string; terms: string[]; knownFacts: string[]; hiddenPlot: string[] }>(res.response.text());
+  const p = parseJson<{ title: string; terms: string[]; laterNames?: string[]; knownFacts: string[]; hiddenPlot: string[] }>(res.response.text());
   return {
     id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
     title: p.title || title,
     progress,
     terms: [...new Set(p.terms.map(s => s.trim()).filter(Boolean))],
+    // Safety net: a "later" name that already shows up in what the viewer has seen is not a spoiler.
+    laterNames: [...new Set((p.laterNames ?? []).map(s => s.trim()).filter(s => s.length >= 3))]
+      .filter(name => !p.knownFacts.some(f => f.toLowerCase().includes(name.toLowerCase()))),
     knownFacts: p.knownFacts,
     hiddenPlot: p.hiddenPlot,
     createdAt: Date.now(),

@@ -42,7 +42,7 @@ async function judge(text: string, pageTitle?: string): Promise<JudgeReply> {
     const { counters } = await load();
     counters.checked++;
     if (reply.judgement.verdict === 'spoiler') counters.veiled++;
-    if (reply.judgement.source === 'on_device') counters.onDevice++; else counters.inCloud++;
+    if (reply.judgement.source === 'in_cloud') counters.inCloud++; else counters.onDevice++;
     await chrome.storage.local.set({ counters });
   }
   return reply;
