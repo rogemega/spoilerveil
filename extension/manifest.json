@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "SpoilerVeil",
+  "version": "0.1.0",
+  "description": "Veils spoilers for the shows you are watching. Posts are judged on-device by Gemini Nano; the cloud is only a fallback.",
+  "minimum_chrome_version": "138",
+  "permissions": ["storage", "offscreen"],
+  "host_permissions": [
+    "https://x.com/*",
+    "https://twitter.com/*",
+    "https://www.youtube.com/*",
+    "https://www.reddit.com/*"
+  ],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "action": { "default_popup": "popup.html", "default_icon": { "32": "icons/icon32.png", "128": "icons/icon128.png" } },
+  "icons": { "32": "icons/icon32.png", "128": "icons/icon128.png" },
+  "content_scripts": [
+    {
+      "matches": ["https://x.com/*", "https://twitter.com/*", "https://www.youtube.com/*", "https://www.reddit.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}

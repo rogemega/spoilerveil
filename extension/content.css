@@ -1,0 +1,6 @@
+.sv-checking { filter: blur(6px); transition: filter .2s; }
+.sv-veiled { filter: blur(9px); user-select: none; pointer-events: none; }
+.sv-tag {
+  display: inline-block; margin: 4px 0; padding: 3px 8px; border-radius: 6px;
+  font: 600 12px/1.4 system-ui, sans-serif; color: #fff; background: #c2410c; cursor: pointer;
+}

@@ -1,0 +1,21 @@
+{
+  "name": "spoilerveil",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hybrid on-device + cloud spoiler shield built with Firebase AI Logic (Gemini Nano in Chrome, Gemini in the cloud).",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "serve": "node build.mjs && npx --yes http-server dist/web -p 5173 -c-1"
+  },
+  "dependencies": {
+    "firebase": "^13.4.0"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.1.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.9.0"
+  }
+}

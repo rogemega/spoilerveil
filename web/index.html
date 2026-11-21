@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SpoilerVeil demo</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <div>
+        <h1>SpoilerVeil</h1>
+        <p>Scroll freely. Gemini Nano reads every post on your device and veils the ones that would spoil your show.</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel">
+      <section class="card">
+        <h2>1. What are you watching?</h2>
+        <label>Show <input id="title" value=""></label>
+        <label>I've seen up to
+          <select id="progress"></select>
+        </label>
+        <details>
+          <summary>Episode guide (optional)</summary>
+          <textarea id="guide" rows="8"></textarea>
+        </details>
+        <button id="build" class="primary">Build spoiler profile</button>
+        <p id="profileStatus" class="status">The cloud model reads the guide once and writes a private list of what to hide. You never see that list.</p>
+      </section>
+
+      <section class="card">
+        <h2>2. Where should posts be judged?</h2>
+        <div class="seg" role="radiogroup">
+          <label><input type="radio" name="mode" value="hybrid" checked> On-device first</label>
+          <label><input type="radio" name="mode" value="cloud"> Cloud only</label>
+        </div>
+        <label class="check"><input type="checkbox" id="second" checked> Ask the cloud when Nano is unsure</label>
+        <p id="nanoStatus" class="status">Checking Gemini Nano…</p>
+        <button id="nano">Download / warm up Gemini Nano</button>
+      </section>
+
+      <section class="card stats">
+        <h2>Live stats</h2>
+        <dl>
+          <div><dt>Posts read</dt><dd id="sRead">0</dd></div>
+          <div><dt>Veiled</dt><dd id="sVeiled">0</dd></div>
+          <div><dt>Judged on-device</dt><dd id="sDevice">0</dd></div>
+          <div><dt>Sent to cloud</dt><dd id="sCloud">0</dd></div>
+          <div><dt>Avg. latency</dt><dd id="sLat">–</dd></div>
+          <div><dt>Matches ground truth</dt><dd id="sAcc">–</dd></div>
+        </dl>
+      </section>
+    </aside>
+
+    <section class="feed-wrap">
+      <div class="feed-head">
+        <h2>Timeline</h2>
+        <button id="play" class="primary" disabled>Start scrolling</button>
+      </div>
+      <ol id="feed" class="feed" aria-live="polite"></ol>
+    </section>
+  </main>
+
+  <footer class="foot">
+    Built with Firebase AI Logic hybrid inference: Gemini Nano in Chrome, Gemini in the cloud as fallback. The show and posts here are fictional.
+  </footer>
+  <script type="module" src="demo.js"></script>
+</body>
+</html>

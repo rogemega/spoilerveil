@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SpoilerVeil</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <h1>SpoilerVeil</h1>
+    <label class="switch"><input type="checkbox" id="enabled"> On</label>
+  </header>
+
+  <section>
+    <h2>Watching</h2>
+    <ul id="shows" class="shows"></ul>
+    <form id="add">
+      <input id="title" placeholder="Show, book or game" required>
+      <input id="progress" placeholder="Seen up to (e.g. S2E5)" required>
+      <details><summary>Episode guide (optional)</summary><textarea id="guide" rows="4"></textarea></details>
+      <button class="primary" type="submit">Add</button>
+      <p id="addStatus" class="status">Gemini in the cloud builds the profile once. Posts are then judged on your device.</p>
+    </form>
+  </section>
+
+  <section>
+    <h2>On-device model</h2>
+    <p id="nano" class="status">Checking…</p>
+    <button id="warm">Download / warm up Gemini Nano</button>
+    <label class="check"><input type="radio" name="mode" value="hybrid"> On-device first</label>
+    <label class="check"><input type="radio" name="mode" value="cloud"> Cloud only</label>
+    <label class="check"><input type="checkbox" id="second"> Ask the cloud when Nano is unsure</label>
+  </section>
+
+  <footer id="counters" class="status"></footer>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>

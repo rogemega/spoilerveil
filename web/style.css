@@ -1,0 +1,70 @@
+:root {
+  --bg: #f4f1ea;
+  --surface: #fffdf8;
+  --ink: #1d2430;
+  --muted: #5d6673;
+  --line: #e2dccf;
+  --accent: #c2410c;
+  --accent-ink: #fff;
+  --device: #0f766e;
+  --cloud: #1d4ed8;
+  --warn: #b45309;
+  --radius: 12px;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", "Hiragino Sans", sans-serif;
+  color: var(--ink);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12161d; --surface: #1a2029; --ink: #e8e6e1; --muted: #9aa3ae; --line: #2a323d;
+    --accent: #fb923c; --accent-ink: #1a1206; --device: #2dd4bf; --cloud: #93c5fd; --warn: #fbbf24;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); }
+.top { padding: 28px 24px 8px; max-width: 1120px; margin: 0 auto; }
+.brand { display: flex; gap: 14px; align-items: center; }
+.mark { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(180deg, var(--accent) 0 50%, var(--ink) 50% 100%); flex: none; }
+h1 { font-size: 24px; margin: 0; letter-spacing: -0.01em; }
+.brand p { margin: 2px 0 0; color: var(--muted); }
+h2 { font-size: 15px; margin: 0 0 12px; }
+.layout { max-width: 1120px; margin: 0 auto; padding: 16px 24px 40px; display: grid; grid-template-columns: 340px 1fr; gap: 24px; }
+@media (max-width: 820px) { .layout { grid-template-columns: 1fr; padding: 16px; } }
+.panel { display: flex; flex-direction: column; gap: 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 10px; }
+input:not([type=radio]):not([type=checkbox]), select, textarea {
+  display: block; width: 100%; margin-top: 4px; padding: 8px 10px; font: inherit; font-size: 14px; color: var(--ink);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+}
+textarea { font-size: 12px; resize: vertical; }
+details { margin-bottom: 12px; font-size: 13px; color: var(--muted); }
+button { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+button:disabled { opacity: .5; cursor: default; }
+.status { font-size: 13px; color: var(--muted); margin: 10px 0 0; line-height: 1.45; }
+.status[data-tone=ok] { color: var(--device); }
+.status[data-tone=warn] { color: var(--warn); }
+.seg { display: flex; gap: 8px; margin-bottom: 8px; }
+.seg label { flex: 1; margin: 0; padding: 8px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); font-size: 13px; }
+.check { color: var(--ink); }
+.stats dl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; }
+.stats dt { font-size: 12px; color: var(--muted); }
+.stats dd { margin: 2px 0 0; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.feed-wrap { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; min-height: 70vh; }
+.feed-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.feed-head h2 { margin: 0; }
+.feed { list-style: none; margin: 0; padding: 0; }
+.post { display: flex; gap: 12px; padding: 14px 4px; border-top: 1px solid var(--line); }
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--line); display: grid; place-items: center; font-weight: 600; flex: none; }
+.body { flex: 1; min-width: 0; }
+.who { font-size: 14px; }
+.handle { color: var(--muted); }
+.text { margin: 4px 0 8px; line-height: 1.5; transition: filter .25s; }
+.post.checking .text, .post.veiled:not(.revealed) .text { filter: blur(7px); user-select: none; }
+.veil { background: var(--bg); border: 1px dashed var(--accent); border-radius: 8px; padding: 8px 10px; margin-bottom: 8px; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
+.veil-reason { margin: 0; font-size: 13px; }
+.post.revealed .veil { display: none; }
+.badge { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.badge[data-source=on_device] { color: var(--device); }
+.badge[data-source=in_cloud] { color: var(--cloud); }
+.foot { max-width: 1120px; margin: 0 auto; padding: 0 24px 32px; color: var(--muted); font-size: 12px; }
