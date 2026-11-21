@@ -62,12 +62,9 @@ buildBtn.addEventListener('click', async () => {
   setStatus('profileStatus', 'Asking Gemini in the cloud to build your spoiler profile…', 'busy');
   const t0 = performance.now();
   try {
-    // Cloud builds the profile while Gemini Nano loads into memory on the device, in parallel.
-    const [built] = await Promise.all([
-      buildProfile(titleEl.value.trim(), `Episode ${ep} (inclusive)`, guideEl.value),
-      (await onDeviceAvailability()) === 'available' ? warmUpOnDevice() : Promise.resolve(),
-    ]);
-    profile = built;
+    // Gemini Nano loads into memory on the device while the cloud builds the profile (not awaited).
+    onDeviceAvailability().then(a => { if (a === 'available') void warmUpOnDevice(); });
+    profile = await buildProfile(titleEl.value.trim(), `Episode ${ep} (inclusive)`, guideEl.value);
     const s = ((performance.now() - t0) / 1000).toFixed(1);
     setStatus('profileStatus',
       `Profile ready in ${s}s (cloud, once): ${profile.terms.length} names to watch for, ${profile.hiddenPlot.length} hidden plot points kept from you. From now on, posts are judged locally.`, 'ok');
