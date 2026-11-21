@@ -30,13 +30,13 @@ async function load() {
 // Judge requests are serialized: Gemini Nano runs one prompt at a time anyway.
 let queue: Promise<unknown> = Promise.resolve();
 
-async function judge(text: string): Promise<JudgeReply> {
+async function judge(text: string, pageTitle?: string): Promise<JudgeReply> {
   const { shows, settings } = await load();
   if (!settings.enabled || !shows.length) {
     return { ok: true, judgement: { verdict: 'safe', reason: 'off', source: 'skipped', ms: 0 } };
   }
   await ensureOffscreen();
-  const msg: ToOffscreen = { target: 'offscreen', type: 'judge', text, shows, settings };
+  const msg: ToOffscreen = { target: 'offscreen', type: 'judge', text, pageTitle, shows, settings };
   const reply = (await chrome.runtime.sendMessage(msg)) as JudgeReply;
   if (reply.ok && reply.judgement.source !== 'skipped') {
     const { counters } = await load();
@@ -62,7 +62,7 @@ async function build(title: string, progress: string, guide: string): Promise<Bu
 chrome.runtime.onMessage.addListener((msg: ToBackground & { target?: string }, _sender, sendResponse) => {
   if (msg.target === 'offscreen') return false;
   if (msg.type === 'judge') {
-    const p = queue.then(() => judge(msg.text));
+    const p = queue.then(() => judge(msg.text, msg.pageTitle));
     queue = p.catch(() => undefined);
     p.then(sendResponse, e => sendResponse({ ok: false, error: String(e) }));
     return true;

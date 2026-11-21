@@ -1,6 +1,9 @@
 .sv-checking { filter: blur(6px); transition: filter .2s; }
 .sv-veiled { filter: blur(9px); user-select: none; pointer-events: none; }
+/* Card mode: blur the card's content but keep the label readable and clickable. */
+.sv-card.sv-veiled { filter: none; pointer-events: auto; position: relative; }
+.sv-card.sv-veiled > :not(.sv-tag) { filter: blur(14px); pointer-events: none; user-select: none; }
 .sv-tag {
-  display: inline-block; margin: 4px 0; padding: 3px 8px; border-radius: 6px;
+  display: inline-block; margin: 4px 0; padding: 3px 8px; border-radius: 6px; position: relative; z-index: 2;
   font: 600 12px/1.4 system-ui, sans-serif; color: #fff; background: #c2410c; cursor: pointer;
 }

@@ -16,12 +16,12 @@ export interface Counters {
 
 /** content/popup → background */
 export type ToBackground =
-  | { type: 'judge'; text: string }
+  | { type: 'judge'; text: string; pageTitle?: string }
   | { type: 'build'; title: string; progress: string; guide: string };
 
 /** background → offscreen */
 export type ToOffscreen =
-  | { target: 'offscreen'; type: 'judge'; text: string; shows: ShowProfile[]; settings: Settings }
+  | { target: 'offscreen'; type: 'judge'; text: string; pageTitle?: string; shows: ShowProfile[]; settings: Settings }
   | { target: 'offscreen'; type: 'build'; title: string; progress: string; guide: string };
 
 export type JudgeReply = { ok: true; judgement: Judgement } | { ok: false; error: string };

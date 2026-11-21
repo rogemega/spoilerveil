@@ -42,7 +42,7 @@ const PROFILE_SCHEMA = {
   type: 'object',
   properties: {
     title: { type: 'string' },
-    terms: { type: 'array', items: { type: 'string' }, maxItems: 40 },
+    terms: { type: 'array', items: { type: 'string' }, maxItems: 80 },
     knownFacts: { type: 'array', items: { type: 'string' }, maxItems: 10 },
     hiddenPlot: { type: 'array', items: { type: 'string' }, maxItems: 16 },
   },
@@ -97,10 +97,11 @@ export async function onDeviceAvailability(): Promise<string> {
   }
 }
 
-function judgePrompt(show: ShowProfile, post: string): string {
+function judgePrompt(show: ShowProfile, post: string, context?: string): string {
   const list = show.hiddenPlot.map((h, i) => `${i + 1}. ${h}`).join('\n');
   return [
     `Secret plot points of "${show.title}" (numbered):\n${list}`,
+    ...(context ? [`The post appears on a page titled: "${context.slice(0, 200)}"`] : []),
     `Social media post (English or Japanese):\n"${post.slice(0, 1000)}"`,
     `Does the post state or clearly imply one of the secret plot points? Answer with its number. ` +
       `If the post only gives opinions, news, theories or questions without stating a secret plot point, answer 0.`,
@@ -115,16 +116,19 @@ function parseJson<T>(text: string): T {
 
 export interface JudgeOptions {
   mode: JudgeMode;
+  /** Title of the page the post sits on (e.g. a video about the show). If it names a followed show,
+   *  every comment on the page is judged against that show even when the comment names nothing. */
+  pageTitle?: string;
 }
 
 export async function judgePost(post: string, shows: ShowProfile[], opts: JudgeOptions): Promise<Judgement> {
   const t0 = performance.now();
-  const showId = matchShow(post, shows);
+  const showId = matchShow(post, shows) ?? (opts.pageTitle ? matchShow(opts.pageTitle, shows) : undefined);
   const show = shows.find(s => s.id === showId);
   if (!show || !show.hiddenPlot.length) {
     return { verdict: 'safe', reason: 'Not about a show you follow', source: 'skipped', ms: performance.now() - t0 };
   }
-  const res = await judgeModel(opts.mode, show.hiddenPlot.length).generateContent(judgePrompt(show, post));
+  const res = await judgeModel(opts.mode, show.hiddenPlot.length).generateContent(judgePrompt(show, post, opts.pageTitle));
   const { reveals } = parseJson<{ reveals: number }>(res.response.text());
   const source: Source = res.response.inferenceSource === 'on_device' ? 'on_device' : 'in_cloud';
   const spoiler = Number.isInteger(reveals) && reveals > 0;
@@ -153,7 +157,7 @@ export async function buildProfile(title: string, progress: string, guide = ''):
   const prompt = [
     `Build a spoiler-filter profile for the show/book/game "${title}". The viewer has seen up to: ${progress}.`,
     guide ? `Use this episode guide as the source of truth:\n"""${guide.slice(0, 20000)}"""` : `Use what you know about this title. If you do not know it, keep hiddenPlot generic (deaths, betrayals, finale outcome).`,
-    `terms: names of characters, places, groups, ships, nicknames and the title (used for keyword matching, so include short forms, first names alone, and Japanese katakana transliterations of every name and of the title, e.g. "Mara" → "マーラ").`,
+    `terms: names of characters (including ones who only appear AFTER the viewer's progress — later villains and reveals are strong spoiler signals), places, groups, ships, nicknames and the title. Used for keyword matching, so include short forms, first names alone, and Japanese names/katakana transliterations of every name and of the title (e.g. "Mara" → "マーラ").`,
     `knownFacts: up to 10 short facts the viewer already saw.`,
     `hiddenPlot: up to 16 short, concrete plot points that happen AFTER the viewer's progress (who dies, who is the traitor, who wins, how it ends). These are only read by a local filter model, never shown to the viewer.`,
   ].join('\n\n');
