@@ -8,7 +8,9 @@
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit",
-    "serve": "node build.mjs && npx --yes http-server dist/web -p 5173 -c-1"
+    "serve": "node build.mjs && npx --yes http-server dist/web -p 5173 -c-1",
+    "build:prod": "APPCHECK_DEBUG_TOKEN= RECAPTCHA_SITE_KEY=6Le1QysuAAAAAMQjLa7JrI-QtkIWU-_Hi1iIOasd node build.mjs",
+    "deploy": "npm run build:prod && firebase deploy --only hosting"
   },
   "dependencies": {
     "firebase": "^13.4.0"
@@ -16,6 +18,7 @@
   "devDependencies": {
     "@types/chrome": "^0.1.0",
     "esbuild": "^0.25.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "firebase-tools": "^14.0.0"
   }
 }

@@ -1,0 +1,9 @@
+{
+  "hosting": {
+    "public": "dist/web",
+    "ignore": ["**/*.map"],
+    "headers": [
+      { "source": "**", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+    ]
+  }
+}
