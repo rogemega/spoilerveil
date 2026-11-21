@@ -103,7 +103,6 @@ playBtn.addEventListener('click', async () => {
   Object.assign(stats, { read: 0, veiled: 0, device: 0, cloud: 0, latency: 0, judged: 0, correct: 0, scored: 0 });
   renderStats();
   const mode = (document.querySelector('input[name=mode]:checked') as HTMLInputElement).value as JudgeMode;
-  const second = $<HTMLInputElement>('second').checked;
   const seen = Number(progressEl.value);
 
   for (const p of DEMO_POSTS) {
@@ -112,7 +111,7 @@ playBtn.addEventListener('click', async () => {
     li.scrollIntoView({ behavior: 'smooth', block: 'end' });
     const badge = li.querySelector('.badge')!;
     try {
-      const j = await judgePost(p.text, [profile], { mode, cloudSecondOpinion: second });
+      const j = await judgePost(p.text, [profile], { mode });
       stats.read++;
       if (j.source !== 'skipped') {
         stats.judged++;

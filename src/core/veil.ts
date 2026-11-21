@@ -14,42 +14,29 @@ export type { ShowProfile } from './match';
 
 export const CLOUD_MODEL = 'gemini-3.5-flash-lite';
 
-export type Verdict = 'spoiler' | 'safe' | 'unsure';
+export type Verdict = 'spoiler' | 'safe';
 export type Source = 'on_device' | 'in_cloud' | 'skipped';
-
-
-export type SpoilerKind = 'death' | 'identity' | 'twist' | 'relationship' | 'survival' | 'winner' | 'ending' | 'other' | 'none';
-
-/** Human-readable label for a spoiler kind. Deliberately vague: the label itself must not spoil. */
-export const KIND_LABEL: Record<SpoilerKind, string> = {
-  death: "a character's fate",
-  identity: 'a hidden identity',
-  twist: 'a plot twist',
-  relationship: 'a secret relationship',
-  survival: "a character's fate",
-  winner: 'who wins',
-  ending: 'the ending',
-  other: 'later events',
-  none: 'later events',
-};
 
 export interface Judgement {
   verdict: Verdict;
-  kind: SpoilerKind;
+  /** Deliberately vague text for the UI: it must never repeat the spoiler. */
   reason: string;
   source: Source;
   ms: number;
   showId?: string;
 }
 
-const JUDGE_SCHEMA = {
-  type: 'object',
-  properties: {
-    verdict: { type: 'string', enum: ['spoiler', 'safe', 'unsure'] },
-    kind: { type: 'string', enum: ['death', 'identity', 'twist', 'relationship', 'survival', 'winner', 'ending', 'other', 'none'] },
-  },
-  required: ['verdict', 'kind'],
-};
+/**
+ * The small on-device model is far more reliable at "which numbered item does this match?"
+ * than at open-ended judgement, and the output is a single integer (fast, nothing to leak).
+ */
+function judgeSchema(n: number) {
+  return {
+    type: 'object',
+    properties: { reveals: { type: 'integer', minimum: 0, maximum: n } },
+    required: ['reveals'],
+  };
+}
 
 const PROFILE_SCHEMA = {
   type: 'object',
@@ -64,12 +51,15 @@ const PROFILE_SCHEMA = {
 
 export type JudgeMode = 'hybrid' | 'cloud';
 
-const judgeModels = new Map<JudgeMode, GenerativeModel>();
+// One model per (mode, number of hidden points): the JSON constraint depends on the list length.
+const judgeModels = new Map<string, GenerativeModel>();
 
-export function judgeModel(mode: JudgeMode): GenerativeModel {
-  let m = judgeModels.get(mode);
+export function judgeModel(mode: JudgeMode, points = 16): GenerativeModel {
+  const key = `${mode}:${points}`;
+  let m = judgeModels.get(key);
   if (m) return m;
   const { ai } = getFirebase();
+  const schema = judgeSchema(points);
   m = getGenerativeModel(ai, {
     mode: mode === 'hybrid' ? InferenceMode.PREFER_ON_DEVICE : InferenceMode.ONLY_IN_CLOUD,
     onDeviceParams: {
@@ -77,14 +67,14 @@ export function judgeModel(mode: JudgeMode): GenerativeModel {
         expectedInputs: [{ type: 'text', languages: ['en', 'ja'] }],
         expectedOutputs: [{ type: 'text', languages: ['en'] }],
       },
-      promptOptions: { responseConstraint: JUDGE_SCHEMA },
+      promptOptions: { responseConstraint: schema },
     },
     inCloudParams: {
       model: CLOUD_MODEL,
-      generationConfig: { responseMimeType: 'application/json', responseJsonSchema: JUDGE_SCHEMA, temperature: 0 },
+      generationConfig: { responseMimeType: 'application/json', responseJsonSchema: schema, temperature: 0 },
     },
   });
-  judgeModels.set(mode, m);
+  judgeModels.set(key, m);
   return m;
 }
 
@@ -108,15 +98,12 @@ export async function onDeviceAvailability(): Promise<string> {
 }
 
 function judgePrompt(show: ShowProfile, post: string): string {
-  const bullets = (xs: string[]) => xs.map(x => `- ${x}`).join('\n') || '- (none)';
+  const list = show.hiddenPlot.map((h, i) => `${i + 1}. ${h}`).join('\n');
   return [
-    `You are a spoiler filter for a viewer of "${show.title}". They have seen up to: ${show.progress}.`,
-    `Already seen (safe to mention):\n${bullets(show.knownFacts)}`,
-    `NOT seen yet (these are spoilers):\n${bullets(show.hiddenPlot)}`,
-    `Post (may be English or Japanese):\n"""${post.slice(0, 1200)}"""`,
-    `Does the post reveal, confirm or strongly hint at anything in the NOT-seen list, or any other later twist, death, identity reveal, winner or ending?`,
-    `Opinions, hype, release dates, casting news and already-seen events are safe. Use "unsure" only if it is genuinely ambiguous.`,
-    `Reply as JSON: {"verdict": "spoiler"|"safe"|"unsure", "kind": the kind of spoiler, or "none" if safe}.`,
+    `Secret plot points of "${show.title}" (numbered):\n${list}`,
+    `Social media post (English or Japanese):\n"${post.slice(0, 1000)}"`,
+    `Does the post state or clearly imply one of the secret plot points? Answer with its number. ` +
+      `If the post only gives opinions, news, theories or questions without stating a secret plot point, answer 0.`,
   ].join('\n\n');
 }
 
@@ -128,29 +115,26 @@ function parseJson<T>(text: string): T {
 
 export interface JudgeOptions {
   mode: JudgeMode;
-  /** When the on-device verdict is "unsure", ask the cloud model once more. */
-  cloudSecondOpinion: boolean;
 }
 
 export async function judgePost(post: string, shows: ShowProfile[], opts: JudgeOptions): Promise<Judgement> {
   const t0 = performance.now();
   const showId = matchShow(post, shows);
   const show = shows.find(s => s.id === showId);
-  if (!show) return { verdict: 'safe', kind: 'none', reason: 'Not about a show you follow', source: 'skipped', ms: performance.now() - t0 };
-
-  const ask = async (mode: JudgeMode) => {
-    const res = await judgeModel(mode).generateContent(judgePrompt(show, post));
-    const out = parseJson<{ verdict: Verdict; kind?: SpoilerKind }>(res.response.text());
-    const source: Source = res.response.inferenceSource === 'on_device' ? 'on_device' : 'in_cloud';
-    return { ...out, source };
-  };
-
-  let r = await ask(opts.mode);
-  if (r.verdict === 'unsure' && r.source === 'on_device' && opts.cloudSecondOpinion) {
-    r = await ask('cloud');
+  if (!show || !show.hiddenPlot.length) {
+    return { verdict: 'safe', reason: 'Not about a show you follow', source: 'skipped', ms: performance.now() - t0 };
   }
-  const kind: SpoilerKind = r.kind && r.kind in KIND_LABEL ? r.kind : 'other';
-  return { verdict: r.verdict, kind, reason: r.verdict === 'spoiler' ? `Reveals ${KIND_LABEL[kind]}` : 'No spoiler', source: r.source, ms: performance.now() - t0, showId: show.id };
+  const res = await judgeModel(opts.mode, show.hiddenPlot.length).generateContent(judgePrompt(show, post));
+  const { reveals } = parseJson<{ reveals: number }>(res.response.text());
+  const source: Source = res.response.inferenceSource === 'on_device' ? 'on_device' : 'in_cloud';
+  const spoiler = Number.isInteger(reveals) && reveals > 0;
+  return {
+    verdict: spoiler ? 'spoiler' : 'safe',
+    reason: spoiler ? `reveals something after ${show.progress}` : 'No spoiler',
+    source,
+    ms: performance.now() - t0,
+    showId: show.id,
+  };
 }
 
 /**

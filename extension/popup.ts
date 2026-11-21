@@ -20,7 +20,6 @@ async function saveSettings(patch: Partial<Settings>) {
 async function render() {
   const { shows, settings, counters } = await state();
   $<HTMLInputElement>('enabled').checked = settings.enabled;
-  $<HTMLInputElement>('second').checked = settings.cloudSecondOpinion;
   document.querySelectorAll<HTMLInputElement>('input[name=mode]').forEach(r => { r.checked = r.value === settings.mode; });
   const list = $<HTMLUListElement>('shows');
   list.replaceChildren(...shows.map(show => {
@@ -47,7 +46,6 @@ async function render() {
 }
 
 $<HTMLInputElement>('enabled').addEventListener('change', e => saveSettings({ enabled: (e.target as HTMLInputElement).checked }));
-$<HTMLInputElement>('second').addEventListener('change', e => saveSettings({ cloudSecondOpinion: (e.target as HTMLInputElement).checked }));
 document.querySelectorAll<HTMLInputElement>('input[name=mode]').forEach(r =>
   r.addEventListener('change', () => saveSettings({ mode: r.value as Settings['mode'] })));
 

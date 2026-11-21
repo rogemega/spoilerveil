@@ -5,7 +5,7 @@ import type { ToOffscreen } from './messages';
 chrome.runtime.onMessage.addListener((msg: ToOffscreen, _sender, sendResponse) => {
   if (msg?.target !== 'offscreen') return false;
   if (msg.type === 'judge') {
-    judgePost(msg.text, msg.shows, { mode: msg.settings.mode, cloudSecondOpinion: msg.settings.cloudSecondOpinion })
+    judgePost(msg.text, msg.shows, { mode: msg.settings.mode })
       .then(judgement => sendResponse({ ok: true, judgement }), e => sendResponse({ ok: false, error: String(e) }));
     return true;
   }

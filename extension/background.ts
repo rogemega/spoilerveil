@@ -33,7 +33,7 @@ let queue: Promise<unknown> = Promise.resolve();
 async function judge(text: string): Promise<JudgeReply> {
   const { shows, settings } = await load();
   if (!settings.enabled || !shows.length) {
-    return { ok: true, judgement: { verdict: 'safe', kind: 'none', reason: 'off', source: 'skipped', ms: 0 } };
+    return { ok: true, judgement: { verdict: 'safe', reason: 'off', source: 'skipped', ms: 0 } };
   }
   await ensureOffscreen();
   const msg: ToOffscreen = { target: 'offscreen', type: 'judge', text, shows, settings };

@@ -3,10 +3,9 @@ import type { Judgement, JudgeMode, ShowProfile } from '../src/core/veil';
 export interface Settings {
   enabled: boolean;
   mode: JudgeMode;
-  cloudSecondOpinion: boolean;
 }
 
-export const DEFAULT_SETTINGS: Settings = { enabled: true, mode: 'hybrid', cloudSecondOpinion: false };
+export const DEFAULT_SETTINGS: Settings = { enabled: true, mode: 'hybrid' };
 
 export interface Counters {
   checked: number;
