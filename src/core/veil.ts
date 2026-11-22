@@ -15,11 +15,13 @@ export type { ShowProfile } from './match';
 /** Fast, cheap model for per-post fallback judgements. */
 export const CLOUD_MODEL = 'gemini-3.5-flash-lite';
 /**
- * Model for the once-per-show profile. A larger model would know more recent story arcs, but in
- * testing (2026-11) gemini-3.8-flash took over a minute for this prompt, so the fast model is used and
- * users can paste an episode guide / synopsis for very recent arcs.
+ * Model for the once-per-show profile when there is no episode guide, so world knowledge matters.
+ * The fast model often misses names from later arcs (and varies from run to run); this one lists them
+ * reliably in ~25 s, which is fine for a step that runs once per show. gemini-3.8-flash took over a
+ * minute in testing (2026-11). With an episode guide the guide is the source of truth, so the fast
+ * model is used.
  */
-export const PROFILE_MODEL = CLOUD_MODEL;
+export const PROFILE_MODEL = 'gemini-3.5-flash';
 
 export type Verdict = 'spoiler' | 'safe';
 export type Source = 'on_device' | 'in_cloud' | 'name_match' | 'skipped';
@@ -50,7 +52,7 @@ const PROFILE_SCHEMA = {
   properties: {
     title: { type: 'string' },
     terms: { type: 'array', items: { type: 'string' }, maxItems: 80 },
-    laterNames: { type: 'array', items: { type: 'string' }, maxItems: 40 },
+    laterNames: { type: 'array', items: { type: 'string' }, maxItems: 80 },
     knownFacts: { type: 'array', items: { type: 'string' }, maxItems: 10 },
     hiddenPlot: { type: 'array', items: { type: 'string' }, maxItems: 16 },
   },
@@ -169,7 +171,18 @@ export async function judgePost(post: string, shows: ShowProfile[], opts: JudgeO
  * Cloud step, once per show. With an episode guide (or a fictional show), the guide is the source
  * of truth; otherwise Gemini relies on what it knows about the title.
  */
-export async function buildProfile(title: string, progress: string, guide = '', modelName = PROFILE_MODEL): Promise<ShowProfile> {
+export async function buildProfile(title: string, progress: string, guide = '', modelName?: string): Promise<ShowProfile> {
+  const primary = modelName ?? (guide.trim() ? CLOUD_MODEL : PROFILE_MODEL);
+  try {
+    return await buildProfileWith(primary, title, progress, guide);
+  } catch (e) {
+    // The knowledge model can time out or return cut-off JSON; the fast model still gives a usable profile.
+    if (primary === CLOUD_MODEL) throw e;
+    return buildProfileWith(CLOUD_MODEL, title, progress, guide);
+  }
+}
+
+async function buildProfileWith(modelName: string, title: string, progress: string, guide: string): Promise<ShowProfile> {
   const { ai } = getFirebase();
   const model = getGenerativeModel(ai, {
     mode: InferenceMode.ONLY_IN_CLOUD,
@@ -179,15 +192,15 @@ export async function buildProfile(title: string, progress: string, guide = '', 
         responseMimeType: 'application/json',
         responseJsonSchema: PROFILE_SCHEMA,
         temperature: 0.2,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 8192,
       },
     },
-  });
+  }, { timeout: 90_000 });
   const prompt = [
     `Build a spoiler-filter profile for the show/book/game "${title}". The viewer has seen up to: ${progress}.`,
     guide ? `Use this episode guide as the source of truth:\n"""${guide.slice(0, 20000)}"""` : `Use what you know about this title. If you do not know it, keep hiddenPlot generic (deaths, betrayals, finale outcome).`,
     `terms: names of characters (including ones who only appear AFTER the viewer's progress — later villains and reveals are strong spoiler signals), places, groups, ships, nicknames and the title. Used for keyword matching, so include short forms, first names alone, and Japanese names/katakana transliterations of every name and of the title (e.g. "Mara" → "マーラ").`,
-    `laterNames: names of characters, forms, groups, places or items that are first introduced AFTER the viewer's progress, so that merely mentioning them is a spoiler (English, Japanese and katakana forms, short forms too). Never include anyone or anything the viewer has already met. Empty if unsure.`,
+    `laterNames: names of characters, forms, groups, places or items that are first introduced AFTER the viewer's progress, so that merely mentioning them is a spoiler (English, Japanese and katakana forms). For every person also add the given name alone and the family name alone as separate entries when they are distinctive ("Lucius Zogratis" → "Lucius Zogratis", "Lucius", "ルシウス"), because posts usually use the short form. Never include anyone or anything the viewer has already met, and never a common word on its own. Empty if unsure.`,
     `knownFacts: up to 10 short facts the viewer already saw.`,
     `hiddenPlot: up to 16 short, concrete plot points that happen AFTER the viewer's progress (who dies, who is the traitor, who wins, how it ends). These are only read by a local filter model, never shown to the viewer.`,
   ].join('\n\n');

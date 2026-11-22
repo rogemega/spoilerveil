@@ -8,7 +8,7 @@ Built for #BuildHybridAI 2026 with **Firebase AI Logic hybrid inference** (Web /
 
 | Step | Runs where | Why |
 | --- | --- | --- |
-| Build a *spoiler profile* when you add a show (names to watch for, what you've already seen, what must stay hidden) | **Cloud** — Gemini (`gemini-3.5-flash-lite`), once per show | Needs world knowledge or a long episode guide. Happens once. |
+| Build a *spoiler profile* when you add a show (names to watch for, what you've already seen, what must stay hidden) | **Cloud** — Gemini, once per show (`gemini-3.5-flash` from its own knowledge, or `gemini-3.5-flash-lite` when you paste an episode guide) | Needs world knowledge or a long episode guide. Happens once. |
 | Judge each post while you scroll | **On-device** — Gemini Nano via the Prompt API, `InferenceMode.PREFER_ON_DEVICE` | Hundreds of short calls per session: free, low-latency, and *what you watch and what you read never leave the browser*. |
 | Fallback | Cloud, automatically | If Nano isn't available (or is still downloading), Firebase AI Logic sends the same request to the cloud. Optional "second opinion" for posts Nano marks as unsure. |
 
